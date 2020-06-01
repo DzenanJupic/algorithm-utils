@@ -1,13 +1,23 @@
-use std::fmt::Formatter;
+use std::fmt::{Debug, Formatter};
 
+/// TradingError marker Trait
+pub trait TradingError: std::error::Error {}
+
+/// TradingErrorKind marker Trait
+pub trait GeneralErrorKind: Copy + Debug {}
+
+/// The general Error used when trading
+///
+/// This error struct provides all the functionality needed when an error occurs while trading
+/// Usually the individual ErrorKinds provide more, domain specific, information and documentation.
 #[derive(Clone, Debug)]
-pub struct Error {
+pub struct Error<K: GeneralErrorKind> {
     msg: String,
-    kind: ErrorKind,
+    kind: K,
 }
 
-impl Error {
-    pub fn new(msg: String, kind: ErrorKind) -> Self {
+impl<K: GeneralErrorKind> Error<K> {
+    pub fn new(msg: String, kind: K) -> Self {
         Self {
             msg,
             kind,
@@ -18,20 +28,32 @@ impl Error {
         &self.msg
     }
 
-    pub fn kind(&self) -> ErrorKind {
+    pub fn kind(&self) -> K {
         self.kind
     }
 }
 
-impl std::fmt::Display for Error {
+impl<K: GeneralErrorKind> std::error::Error for Error<K> {}
+
+impl<K: GeneralErrorKind> TradingError for Error<K> {}
+
+impl<K: GeneralErrorKind> std::fmt::Display for Error<K> {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "Error({:?}): {}", self.kind, self.msg)
+        let msg = self.msg
+                      .trim()
+                      .replace('\n', "\n\t");
+
+        write!(
+            formatter,
+            "Error ({:?}):\n\
+            \t{}",
+            self.kind,
+            msg
+        )
     }
 }
 
-impl std::error::Error for Error {}
-
-impl From<libloading::Error> for Error {
+impl From<libloading::Error> for Error<ErrorKind> {
     fn from(error: libloading::Error) -> Self {
         Self {
             msg: format!("{:?}", error),
@@ -40,7 +62,7 @@ impl From<libloading::Error> for Error {
     }
 }
 
-impl From<std::io::Error> for Error {
+impl From<std::io::Error> for Error<ErrorKind> {
     fn from(err: std::io::Error) -> Self {
         Self {
             msg: err.to_string(),
@@ -49,17 +71,33 @@ impl From<std::io::Error> for Error {
     }
 }
 
-#[derive(Clone, Debug, Copy)]
+/// The basic ErrorKind enum
+///
+/// The ErrorKind enum has the purpose to cover a great range of different errors without
+/// going into details about the error.
+/// It's also not meant to provide any features or special functionality.
+///
+/// It should be used if there's no more detailed ErrorKind available or if the detailed
+/// ErrorKind information is unimportant or undesired.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ErrorKind {
-    BrokerConnectionFailed,
-    CouldNotLogin,
-    CouldNotBuy,
-    CouldNotSell,
-    IO,
+    Broker,
+    Bank,
+    Trading,
     LibLoading,
+    IO,
     MisMatchedVersion,
-    NoNewPositions,
     Other,
-    Panic,
-    TimeOut,
 }
+
+impl GeneralErrorKind for ErrorKind {}
+
+/// The TradingErrorKind
+///
+/// The TradingErrorKind has the purpose to go into greater detail about common trading errors.
+///
+/// It should be used for trading algorithms.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TradingErrorKind {}
+
+impl GeneralErrorKind for TradingErrorKind {}
