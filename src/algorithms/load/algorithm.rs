@@ -59,11 +59,11 @@ impl Algorithm {
                 .read()
         };
 
-        // check that the rustc and the algorithm-utils version of the provided algorithm is
-        // the same as the rustc and the algorithm-utils version of this crate.
+        // check that the rustc and the trading-utils version of the provided algorithm is
+        // the same as the rustc and the trading-utils version of this crate.
         // This should make sure that no undefined behaviour occurs when loading the algorithm.
         // To pass this test the algorithm just needs to use the same version of rustc and
-        // algorithm-utils like trading-desk used when it was compiled
+        // trading-utils like trading-desk used when it was compiled
         if algorithm_registration.rustc_version != crate::RUSTC_VERSION
             || algorithm_registration.utils_version != crate::UTILS_VERSION {
             return Err(Error::new(

@@ -8,7 +8,13 @@ pub struct Position {
     pub order: Order,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+impl From<Order> for Position {
+    fn from(_: Order) -> Self {
+        unimplemented!()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PositionType {
     LongCall,
     LongPut,

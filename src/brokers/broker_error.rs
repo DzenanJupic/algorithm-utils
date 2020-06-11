@@ -1,36 +1,24 @@
 use std::fmt;
-use std::fmt::Formatter;
 
-use crate::TradingError;
-
-#[derive(Debug, Clone)]
-pub struct BrokerError {
-    msg: String,
-    kind: BrokerErrorKind,
-}
-
-impl std::error::Error for BrokerError {}
-
-impl TradingError for BrokerError {}
-
-impl fmt::Display for BrokerError {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            formatter,
-            "BrokerError ({:?}):\n\
-            \t{}",
-            self.kind,
-            self.msg
-        )
-    }
-}
+use crate::GeneralErrorKind;
 
 #[derive(Debug, Copy, Clone)]
 pub enum BrokerErrorKind {
     ConnectionFailed,
     CouldNotLogin,
     CouldNotLogout,
+    NoSuchOrder,
     NoSuchPosition,
     Other,
     TimeOut,
 }
+
+impl fmt::Display for BrokerErrorKind {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{:?}", self)
+    }
+}
+
+impl std::error::Error for BrokerErrorKind {}
+
+impl GeneralErrorKind for BrokerErrorKind {}

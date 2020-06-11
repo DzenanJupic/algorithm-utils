@@ -1,5 +1,5 @@
 [package]
-name = "algorithm-utils"
+name = "trading-utils"
 version = "0.1.0"
 authors = ["Dzenan Jupic <info@dzenanjupic.de>"]
 edition = "2018"
@@ -7,6 +7,9 @@ edition = "2018"
 [dependencies]
 libloading = "0.6.2"
 chrono = "0.4.11"
+auto_ops = "0.1.0"
+
+trading-macros = {path="./trading-macros"}
 
 [build-dependencies]
 rustc_version = "0.2.3"

@@ -1,64 +1,198 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
 use chrono::{DateTime, Duration, Local};
 
-use crate::{Derivative, Instruction, Percent, Points, PositionType, Price, StockExchange};
+use crate::{PositionType, Price, RelativePrice, StockExchange};
 
-#[derive(Clone, Debug)]
-pub struct Order {
-    stock_exchange: StockExchange,
-    order_time: DateTime<Local>,
-    derivative: Derivative,
-    pieces: u64,
-    order_type: OrderType,
-    position_type: PositionType,
-    order_moment: OrderMoment,
-    order_validity: OrderValidity,
-    one_cancels_the_other: Option<Box<Order>>,
+/// for a documentation of the order types:  https://www.investopedia.com/investing/basics-trading-stock-know-your-orders/
+#[derive(Clone, Debug, PartialEq)]
+pub enum Order {
+    Single(OrderData),
+    OneCancelsTheOther(Vec<OrderData>),
+    AllOrNone(Vec<OrderData>),
+    ImmediateOrCancel(OrderData),
+    FillOrKill(Vec<OrderData>),
 }
 
 impl Order {
-    #[inline]
-    pub fn is_now_or_passed(&self) -> bool {
-        self.order_moment.is_now_or_passed()
+    pub fn has_id(&self, id: u64) -> bool {
+        use Order::*;
+        match self {
+            Single(order_data) => order_data.id == id,
+            OneCancelsTheOther(data) => data
+                .iter()
+                .find(|order_data| order_data.id == id)
+                .is_some(),
+            AllOrNone(data) => data
+                .iter()
+                .find(|order_data| order_data.id == id)
+                .is_some(),
+            ImmediateOrCancel(order_data) => order_data.id == id,
+            FillOrKill(data) => data
+                .iter()
+                .find(|order_data| order_data.id == id)
+                .is_some(),
+        }
     }
 
-    #[inline]
-    pub fn is_valid(&self) -> bool {
-        self.order_validity.is_valid(&self.order_time)
+    pub fn find_order(&self, id: u64) -> Option<&OrderData> {
+        use Order::*;
+        match self {
+            Single(order_data) => {
+                if order_data.id == id {
+                    Some(order_data)
+                } else {
+                    None
+                }
+            }
+            OneCancelsTheOther(data) => data
+                .iter()
+                .find(|order_data| order_data.id == id),
+            AllOrNone(data) => data
+                .iter()
+                .find(|order_data| order_data.id == id),
+            ImmediateOrCancel(order_data) => {
+                if order_data.id == id {
+                    Some(order_data)
+                } else {
+                    None
+                }
+            }
+            FillOrKill(data) => data
+                .iter()
+                .find(|order_data| order_data.id == id),
+        }
     }
 
-    /// cancels all orders tied to it by the one_cancels_the_other_field
-    pub fn cancel_others() -> CancelResult {
-        unimplemented!()
+    pub fn find_order_mut(&mut self, id: u64) -> Option<&mut OrderData> {
+        use Order::*;
+        match self {
+            Single(order_data) => {
+                if order_data.id == id {
+                    Some(order_data)
+                } else {
+                    None
+                }
+            }
+            OneCancelsTheOther(data) => data
+                .iter_mut()
+                .find(|order_data| order_data.id == id),
+            AllOrNone(data) => data
+                .iter_mut()
+                .find(|order_data| order_data.id == id),
+            ImmediateOrCancel(order_data) => {
+                if order_data.id == id {
+                    Some(order_data)
+                } else {
+                    None
+                }
+            }
+            FillOrKill(data) => data
+                .iter_mut()
+                .find(|order_data| order_data.id == id),
+        }
     }
 }
 
-impl From<Instruction<'_>> for Order {
-    fn from(_instruction: Instruction) -> Self {
-        unimplemented!()
+/// The OrderData of an Order
+///
+/// #### Fields:
+/// * __id__: A unique id that makes it easy to identify an order. Note: Since many brokers provide
+/// strings instead of u64 the id is always the hash of the provided raw_id.
+/// * __raw_id__: A unique id that makes it easy to identify an order. This id is usually provided
+/// by the broker
+/// * __stock_exchange__: The stock exchange on which the order will be executed.
+/// todo
+#[derive(Clone, Debug, PartialEq)]
+pub struct OrderData {
+    id: u64,
+    raw_id: String,
+
+    stock_exchange: StockExchange,
+    pieces: u64,
+
+    order_type: OrderType,
+    position_type: PositionType,
+
+    take_profit: TakeProfit,
+    stop_loss: StopLoss,
+
+    moment: OrderMoment,
+    validity: OrderValidity,
+}
+
+impl OrderData {
+    pub fn id(&self) -> u64 { self.id }
+    pub fn raw_id(&self) -> &String { &self.raw_id }
+    pub fn stock_exchange(&self) -> StockExchange { self.stock_exchange }
+    pub fn pieces(&self) -> u64 { self.pieces }
+    pub fn order_type(&self) -> &OrderType { &self.order_type }
+    pub fn position_type(&self) -> PositionType { self.position_type }
+    pub fn take_profit(&self) -> &TakeProfit { &self.take_profit }
+    pub fn stop_loss(&self) -> &StopLoss { &self.stop_loss }
+    pub fn moment(&self) -> &OrderMoment { &self.moment }
+    pub fn validity(&self) -> &OrderValidity { &self.validity }
+
+    pub fn update_take_profit(&mut self, take_profit: TakeProfit) { self.take_profit = take_profit }
+    pub fn update_stop_loss(&mut self, stop_loss: StopLoss) { self.stop_loss = stop_loss }
+    pub fn update_moment(&mut self, order_moment: OrderMoment) { self.moment = order_moment }
+    pub fn update_validity(&mut self, order_validity: OrderValidity) { self.validity = order_validity }
+
+    pub fn new(
+        raw_id: String,
+        stock_exchange: StockExchange,
+        pieces: u64,
+        order_type: OrderType,
+        position_type: PositionType,
+        take_profit: TakeProfit,
+        stop_loss: StopLoss,
+        moment: OrderMoment,
+        validity: OrderValidity,
+    ) -> Self {
+        let mut hasher = DefaultHasher::new();
+        raw_id.hash(&mut hasher);
+        let id = hasher.finish();
+
+        Self {
+            id,
+            raw_id,
+            stock_exchange,
+            pieces,
+            order_type,
+            position_type,
+            take_profit,
+            stop_loss,
+            moment,
+            validity,
+        }
     }
 }
 
-pub enum CancelResult {
-    Canceled,
-    NotCanceled,
-}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum OrderType {
     MarketOrder,
     LimitOrder(Price),
     StopOrder(Price),
-    TrailingStopOrder(Price, TrailingStop),
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum TrailingStop {
-    Percent(Percent),
-    Price(Price),
-    Points(Points),
+#[derive(Clone, Debug, PartialEq)]
+pub enum TakeProfit {
+    Absolute(Price),
+    Relative(RelativePrice),
+    None,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum StopLoss {
+    Absolute(Price),
+    Relative(RelativePrice),
+    Trailing(RelativePrice),
+    None,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrderMoment {
     Instant,
     Planed(DateTime<Local>),
@@ -78,7 +212,7 @@ impl OrderMoment {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OrderValidity {
     OneDay,
     OneWeek,

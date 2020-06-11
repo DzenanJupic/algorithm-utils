@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
-/// TradingError marker Trait
-pub trait TradingError: std::error::Error {}
+/// GeneralError marker Trait
+pub trait GeneralError: std::error::Error {}
 
 /// TradingErrorKind marker Trait
 pub trait GeneralErrorKind: Copy + Debug {}
@@ -35,7 +35,7 @@ impl<K: GeneralErrorKind> Error<K> {
 
 impl<K: GeneralErrorKind> std::error::Error for Error<K> {}
 
-impl<K: GeneralErrorKind> TradingError for Error<K> {}
+impl<K: GeneralErrorKind> GeneralError for Error<K> {}
 
 impl<K: GeneralErrorKind> std::fmt::Display for Error<K> {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
