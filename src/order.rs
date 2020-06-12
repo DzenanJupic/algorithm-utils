@@ -8,7 +8,7 @@ use crate::{PositionType, Price, RelativePrice, StockExchange};
 /// for a documentation of the order types:  https://www.investopedia.com/investing/basics-trading-stock-know-your-orders/
 #[derive(Clone, Debug, PartialEq)]
 pub enum Order {
-    Single(OrderData),
+    Normal(OrderData),
     OneCancelsTheOther(Vec<OrderData>),
     AllOrNone(Vec<OrderData>),
     ImmediateOrCancel(OrderData),
@@ -19,7 +19,7 @@ impl Order {
     pub fn has_id(&self, id: u64) -> bool {
         use Order::*;
         match self {
-            Single(order_data) => order_data.id == id,
+            Normal(order_data) => order_data.id == id,
             OneCancelsTheOther(data) => data
                 .iter()
                 .find(|order_data| order_data.id == id)
@@ -36,10 +36,10 @@ impl Order {
         }
     }
 
-    pub fn find_order(&self, id: u64) -> Option<&OrderData> {
+    pub fn get(&self, id: u64) -> Option<&OrderData> {
         use Order::*;
         match self {
-            Single(order_data) => {
+            Normal(order_data) => {
                 if order_data.id == id {
                     Some(order_data)
                 } else {
@@ -65,10 +65,10 @@ impl Order {
         }
     }
 
-    pub fn find_order_mut(&mut self, id: u64) -> Option<&mut OrderData> {
+    pub fn get_mut(&mut self, id: u64) -> Option<&mut OrderData> {
         use Order::*;
         match self {
-            Single(order_data) => {
+            Normal(order_data) => {
                 if order_data.id == id {
                     Some(order_data)
                 } else {
@@ -107,7 +107,6 @@ impl Order {
 #[derive(Clone, Debug, PartialEq)]
 pub struct OrderData {
     id: u64,
-    raw_id: String,
 
     stock_exchange: StockExchange,
     pieces: u64,
@@ -124,11 +123,10 @@ pub struct OrderData {
 
 impl OrderData {
     pub fn id(&self) -> u64 { self.id }
-    pub fn raw_id(&self) -> &String { &self.raw_id }
-    pub fn stock_exchange(&self) -> StockExchange { self.stock_exchange }
+    pub fn stock_exchange(&self) -> &StockExchange { &self.stock_exchange }
     pub fn pieces(&self) -> u64 { self.pieces }
     pub fn order_type(&self) -> &OrderType { &self.order_type }
-    pub fn position_type(&self) -> PositionType { self.position_type }
+    pub fn position_type(&self) -> &PositionType { &self.position_type }
     pub fn take_profit(&self) -> &TakeProfit { &self.take_profit }
     pub fn stop_loss(&self) -> &StopLoss { &self.stop_loss }
     pub fn moment(&self) -> &OrderMoment { &self.moment }
@@ -139,52 +137,29 @@ impl OrderData {
     pub fn update_moment(&mut self, order_moment: OrderMoment) { self.moment = order_moment }
     pub fn update_validity(&mut self, order_validity: OrderValidity) { self.validity = order_validity }
 
-    pub fn new(
-        raw_id: String,
-        stock_exchange: StockExchange,
-        pieces: u64,
-        order_type: OrderType,
-        position_type: PositionType,
-        take_profit: TakeProfit,
-        stop_loss: StopLoss,
-        moment: OrderMoment,
-        validity: OrderValidity,
-    ) -> Self {
+    pub fn hash_raw_id(raw_id: &str) -> u64 {
         let mut hasher = DefaultHasher::new();
         raw_id.hash(&mut hasher);
-        let id = hasher.finish();
-
-        Self {
-            id,
-            raw_id,
-            stock_exchange,
-            pieces,
-            order_type,
-            position_type,
-            take_profit,
-            stop_loss,
-            moment,
-            validity,
-        }
+        hasher.finish()
     }
 }
 
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum OrderType {
     MarketOrder,
     LimitOrder(Price),
     StopOrder(Price),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TakeProfit {
     Absolute(Price),
     Relative(RelativePrice),
     None,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StopLoss {
     Absolute(Price),
     Relative(RelativePrice),
@@ -214,6 +189,7 @@ impl OrderMoment {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OrderValidity {
+    Now,
     OneDay,
     OneWeek,
     OneMonth,
@@ -225,6 +201,7 @@ impl OrderValidity {
     pub fn as_duration(&self) -> Duration {
         use OrderValidity::*;
         match self {
+            Now => Duration::zero(),
             OneDay => Duration::days(1),
             OneWeek => Duration::weeks(1),
             OneMonth => Duration::days(30),

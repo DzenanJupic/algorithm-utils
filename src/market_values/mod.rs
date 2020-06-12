@@ -48,31 +48,6 @@ macro_rules! impl_ops {
             }
         }
 
-        // lhs: $name, rhs: f64
-        impl_op_ex!(+ |a: &$name, b: &f64| -> $name { $name(a.0 + b) });
-        impl_op_ex!(- |a: &$name, b: &f64| -> $name { $name(a.0 - b) });
-        impl_op_ex!(* |a: &$name, b: &f64| -> $name { $name(a.0 * b) });
-        impl_op_ex!(/ |a: &$name, b: &f64| -> $name { $name(a.0 / b) });
-
-        impl_op_ex!(+= |a: &mut $name, b: &f64| { a.0 += b; });
-        impl_op_ex!(-= |a: &mut $name, b: &f64| { a.0 -= b; });
-        impl_op_ex!(*= |a: &mut $name, b: &f64| { a.0 *= b; });
-        impl_op_ex!(/= |a: &mut $name, b: &f64| { a.0 /= b; });
-
-        // lhs: $name, rhs: Percent
-        impl_op_ex!(+ |a: &$name, b: &Percent| -> $name { $name(a.0 + a.0 * b.0) });
-        impl_op_ex!(- |a: &$name, b: &Percent| -> $name { $name(a.0 - a.0 * b.0) });
-        impl_op_ex!(* |a: &$name, b: &Percent| -> $name { $name(a.0 * b.0) });
-        impl_op_ex!(/ |a: &$name, b: &Percent| -> $name { $name(a.0 * b.0) });
-
-        impl_op_ex!(+= |a: &mut $name, b: &Percent| { a.0 += a.0 * b.0; });
-        impl_op_ex!(-= |a: &mut $name, b: &Percent| { a.0 -= a.0 * b.0; });
-        impl_op_ex!(*= |a: &mut $name, b: &Percent| { a.0 *= b.0; });
-        impl_op_ex!(/= |a: &mut $name, b: &Percent| { a.0 /= b.0; });
-    };
-    ($name:path) => {
-        impl_ops!($name, no_percent);
-
         // lhs: $name, rhs: $name
         impl_op_ex!(+ |a: &$name, b: &$name| -> $name { $name(a.0 + b.0) });
         impl_op_ex!(- |a: &$name, b: &$name| -> $name { $name(a.0 - b.0) });
@@ -83,6 +58,31 @@ macro_rules! impl_ops {
         impl_op_ex!(-= |a: &mut $name, b: &$name| { a.0 -= b.0; });
         impl_op_ex!(*= |a: &mut $name, b: &$name| { a.0 *= b.0; });
         impl_op_ex!(/= |a: &mut $name, b: &$name| { a.0 /= b.0; });
+
+        // lhs: $name, rhs: f64
+        impl_op_ex!(+ |a: &$name, b: &f64| -> $name { $name(a.0 + b) });
+        impl_op_ex!(- |a: &$name, b: &f64| -> $name { $name(a.0 - b) });
+        impl_op_ex!(* |a: &$name, b: &f64| -> $name { $name(a.0 * b) });
+        impl_op_ex!(/ |a: &$name, b: &f64| -> $name { $name(a.0 / b) });
+
+        impl_op_ex!(+= |a: &mut $name, b: &f64| { a.0 += b; });
+        impl_op_ex!(-= |a: &mut $name, b: &f64| { a.0 -= b; });
+        impl_op_ex!(*= |a: &mut $name, b: &f64| { a.0 *= b; });
+        impl_op_ex!(/= |a: &mut $name, b: &f64| { a.0 /= b; });
+    };
+    ($name:path) => {
+        impl_ops!($name, no_percent);
+
+        // lhs: $name, rhs: Percent
+        impl_op_ex!(+ |a: &$name, b: &Percent| -> $name { $name(a.0 * (1.0 + b.0)) });
+        impl_op_ex!(- |a: &$name, b: &Percent| -> $name { $name(a.0 * (1.0 - b.0)) });
+        impl_op_ex!(* |a: &$name, b: &Percent| -> $name { $name(a.0 * b.0) });
+        impl_op_ex!(/ |a: &$name, b: &Percent| -> $name { $name(a.0 * b.0) });
+
+        impl_op_ex!(+= |a: &mut $name, b: &Percent| { a.0 *= 1.0 + b.0; });
+        impl_op_ex!(-= |a: &mut $name, b: &Percent| { a.0 *= 1.0 - b.0; });
+        impl_op_ex!(*= |a: &mut $name, b: &Percent| { a.0 *= b.0; });
+        impl_op_ex!(/= |a: &mut $name, b: &Percent| { a.0 /= b.0; });
     };
 }
 
