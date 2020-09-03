@@ -4,9 +4,9 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
+use crate::algorithms::load::Algorithm;
+use crate::error::GeneralError;
 
-use crate::{Error, ErrorKind};
-use crate::load::algorithm::Algorithm;
 
 #[cfg(target_os = "windows")]
 const DYL_EXTENSION: &str = "dll";
@@ -38,7 +38,7 @@ impl Algorithms {
     /// Duplicated algorithm names will lead to an error
     /// If a file is no dynamic library or a folder does not contains a dynamic library
     /// a warning message will be printed
-    pub fn load_all<P: AsRef<Path>>(&mut self, path: &P) -> Result<(), Error<ErrorKind>> {
+    pub fn load_all<P: AsRef<Path>>(&mut self, path: &P) -> Result<(), GeneralError> {
         for entry in read_dir(path)? {
             let entry = entry?;
             let path = entry.path();
@@ -66,31 +66,16 @@ impl Algorithms {
 
     /// loads an algorithm by path
     /// for more information have a look at `Algorithm::load`
-    pub fn load<P: AsRef<OsStr>>(&mut self, path: &P) -> Result<(), Error<ErrorKind>> {
+    pub fn load<P: AsRef<OsStr>>(&mut self, path: &P) -> Result<(), GeneralError> {
         let algorithm = Algorithm::load(path)?;
 
         if self.algorithms.contains_key(algorithm.name()) {
-            return Err(Error::new(
-                format!(
-                    "An algorithm with the name `{}` already exists\n\
-                    consider removing one of both",
-                    algorithm.name()
-                ),
-                ErrorKind::LibLoading,
-            ));
-        }
-
-        if algorithm.max_data_length() < algorithm.min_data_length() && algorithm.max_data_length() != 0 {
-            return Err(Error::new(
-                format!(
-                    "The algorithm `{}` is not configured correctly\n\
-                    (min_data_length: {}, max_data_length: {})\n\
-                    (max_data_length needs to be greater or equal to min_data_length or needs to be equal to 0)",
-                    algorithm.name(),
-                    algorithm.min_data_length(), algorithm.max_data_length(),
-                ),
-                ErrorKind::LibLoading,
-            ));
+            println!(
+                "An algorithm with the name `{}` already exists\n\
+                consider removing one of both",
+                algorithm.name()
+            );
+            return Err(GeneralError::LibLoading);
         }
 
         self.algorithms.insert(

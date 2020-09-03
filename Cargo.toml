@@ -8,8 +8,7 @@ edition = "2018"
 libloading = "0.6.2"
 chrono = "0.4.11"
 auto_ops = "0.1.0"
-
-trading-macros = {path="./trading-macros"}
+serde = {version="1.0.114", features=["derive"]}
 
 [build-dependencies]
 rustc_version = "0.2.3"

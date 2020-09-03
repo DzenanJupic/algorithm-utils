@@ -6,8 +6,25 @@ pub mod algorithm_registration;
 
 #[macro_export]
 macro_rules! export_algorithm {
-    ($name:literal, $description:literal, $algorithm:expr) => (export_algorithm!($name, $description, 0, 0, $algorithm));
+    ($name:literal, $description:literal, $algorithm:expr) => {
+        export_algorithm!(
+            $name,
+            $description,
+            algorithm_registration::DataLength::Variable,
+            algorithm_registration::DataLength::Variable,
+            $algorithm
+        )
+    };
     ($name:literal, $description:literal, $min_data_length:literal, $max_data_length:literal, $algorithm:expr) => {
+        export_algorithm!(
+            $name,
+            $description,
+            algorithm_registration::DataLength::Fixed($min_data_length),
+            algorithm_registration::DataLength::Fixed($max_data_length),
+            $algorithm
+        );
+    };
+    ($name:literal, $description:literal, $min_data_length:expr, $max_data_length:expr, $algorithm:expr) => {
         #[doc(hidden)]
         pub extern fn initial_algorithm_state() -> ::std::boxed::Box<dyn AlgorithmInterface> {
             ::std::boxed::Box::new($algorithm)

@@ -1,4 +1,6 @@
-use crate::AlgorithmInterface;
+use std::fmt;
+use std::fmt::Debug;
+use crate::algorithms::export::AlgorithmInterface;
 
 #[derive(Clone, Debug)]
 pub struct AlgorithmRegistration {
@@ -8,8 +10,24 @@ pub struct AlgorithmRegistration {
     pub name: &'static str,
     pub description: &'static str,
 
-    pub min_data_length: u64,
-    pub max_data_length: u64,
+    pub min_data_length: DataLength,
+    pub max_data_length: DataLength,
 
     pub initial_algorithm_state_fn: unsafe extern fn() -> Box<dyn AlgorithmInterface>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum DataLength {
+    Fixed(usize),
+    Variable
+}
+
+impl fmt::Display for DataLength {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "{:?}",
+            self
+        )
+    }
 }
